@@ -7,6 +7,7 @@ output: html_document
 
 ```{r clear workspace and set wd}
 ### clear work space 
+  rm(list = ls())
 
 ### set working directory 
   setwd('/Users/christinevega/Desktop/UoAkron Postdoc/Fall Away Peg Board/R_fa_analysis/fa_analysis')
