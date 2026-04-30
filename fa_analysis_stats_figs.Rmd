@@ -11,8 +11,12 @@ output: html_document
 
 ### set working directory 
   setwd('/Users/christinevega/Desktop/UoAkron Postdoc/Fall Away Peg Board/R_fa_analysis/fa_analysis')
+  
+### install packages
+  library(lme4)
+  library(dplyr)
 
 ### import csv containing metadata and output variables from python
-  data -> read.csv("2026-04-28_fa_analysis_metadata_output_variables.csv")
+  data <- read.csv("2026-04-28_fa_metadata_output_variables.csv")
 
-
+```
