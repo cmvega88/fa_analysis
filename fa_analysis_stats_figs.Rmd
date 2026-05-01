@@ -13,10 +13,23 @@ output: html_document
   setwd('/Users/christinevega/Desktop/UoAkron Postdoc/Fall Away Peg Board/R_fa_analysis/fa_analysis')
   
 ### install packages
-  library(lme4)
+  #library(lme4)
   library(dplyr)
 
 ### import csv containing metadata and output variables from python
   data <- read.csv("2026-04-28_fa_metadata_output_variables.csv")
+
+```
+```{r can I pool all behavioral trials for analysis?}
+
+### determine if the "good behavioral" trials differ based on "grade" during processing
+### to do this, compare only pre values for all variables of interest
+
+```
+
+```{r does speed vary pre and post disturbance OR by grade?}
+
+### to do this, need to first determine distribution of speed data
+### create histograms to see if need to do gamma or linear mixed effects model
 
 ```
