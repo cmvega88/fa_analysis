@@ -12,8 +12,10 @@ output: html_document
 ### set working directory 
   setwd('/Users/christinevega/Desktop/UoAkron Postdoc/Fall Away Peg Board/R_fa_analysis/fa_analysis')
   
-### install packages
+### load packages
   library(tidyr)
+  library(lme4)
+  library(lemerTest)
 
 ### import csv containing metadata and output variables from python
   data <- read.csv("2026-05-06_fa_metadata_output_variables.csv")
@@ -36,16 +38,80 @@ data_long$time[data_long$time == ""] <- NaN
 
 ```
 
-```{r can I pool all behavioral trials for analysis?}
+```{r what is distribution of speed data}
+## first, determine if different data processing "grades" are different from each other or can be pools together for analysis
+  ## isolate all pre avg speed values by grade
+  pre_A <- data_long$value[
+    data_long$variable == "avg_speed" &
+    data_long$time == "pre" &
+    data_long$grade == "A"]
 
-### determine if the "good behavioral" trials differ based on "grade" during processing
-### to do this, compare only pre values for all variables of interest
+  pre_B <- data_long$value[
+    data_long$variable == "avg_speed" &
+    data_long$time == "pre" &
+    data_long$grade == "B"]
+  
+  ## create histogram plots and overlay kernel density line for each "grade
+    # set up side by side plot area
+      par(mfrow = c(1, 2))
+    
+    # plot pre avg speed for "grade A"
+      hist(pre_A,
+        prob = TRUE,
+        col = "lightblue",
+        main = "Grade A - Pre Speed",
+        xlab = "Pre Avg Speed")
+
+      lines(density(pre_A), col = "red", lwd = 2)
+  
+      # plot pre avg speed for "grade B"
+        hist(pre_B,
+          prob = TRUE,
+          col = "lightgreen",
+          main = "Grade B - Pre Speed",
+          xlab = "Pre Avg Speed")
+
+        lines(density(pre_B), col = "red", lwd = 2)
+  
+  ## now plot both distributions on the same histogram
+    # align the histograms
+      all_vals <- c(pre_A, pre_B)
+
+      brks <- seq(min(all_vals), max(all_vals), length.out = 20)
+      
+    # plot with transparency so both distributions visible
+      hist(pre_A,
+        breaks = brks,
+        probability = TRUE,
+        col = rgb(1, 0, 0, 0.4),   # red transparent
+        xlim = range(all_vals),
+        main = "Pre Avg Speed: Grade A vs B",
+        xlab = "Avg Speed")
+
+      hist(pre_B,
+        breaks = brks,
+        probability = TRUE,
+        col = rgb(0, 0, 1, 0.4),   # blue transparent
+        add = TRUE)
+      
+## does average pre speed differ between grade A and B?
+  # subset data for model
+  pre_speed_data <- data_long[data_long$variable == "avg_speed" & 
+                                data_long$time =="pre",]
+ 
+   # run general linear model on pre speed + deal with repeated measures
+    #grade_model <- glm(value ~ grade, data = pre_data, family = gaussian())
+    #summary(grade_model)
+      
+    #model <- lmer(value ~ grade + (1 | individual), data = pre_speed_data)
+    #summary(model)
+  
+    # does the effect of pre v post change depending on speed?
+    # predictors = variable, time, grade, speed (as continuous covariate)
+    # outcome = value (all output variables)
+    model <- lmer(value ~ variable * time * grade + speed * time + (1 | individual),
+              data = data_long)
 
 ```
 
-```{r does speed vary pre and post disturbance OR by grade?}
 
-### to do this, need to first determine distribution of speed data
-### create histograms to see if need to do gamma or linear mixed effects model
-
-```
