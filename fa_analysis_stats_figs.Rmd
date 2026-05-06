@@ -13,13 +13,29 @@ output: html_document
   setwd('/Users/christinevega/Desktop/UoAkron Postdoc/Fall Away Peg Board/R_fa_analysis/fa_analysis')
   
 ### install packages
-  #library(lme4)
-  library(dplyr)
+  library(tidyr)
 
 ### import csv containing metadata and output variables from python
-  data <- read.csv("2026-04-28_fa_metadata_output_variables.csv")
+  data <- read.csv("2026-05-06_fa_metadata_output_variables.csv")
 
 ```
+
+```{r reformat csv}
+
+# need to reformat the imported csv from "wide" (1 row per trial, all variables as columns) to "long" (multiple rows per trial, each variable has its own row)
+
+data_long <- pivot_longer(data, 
+              cols = -c("date", "mocap_csv_name", "individual", "block_number",
+              "trial", "grade"),
+              names_to = c("time", "variable"), # create new column with header info
+              names_pattern = "(pre|post)?_?(.*)", # optionally use pre/post
+              values_to = "value") # holds data values
+
+## output variable "avg_body_angle_spread" for all spatial chunks does not have a pre and post component. Convert blanks to NaN.
+data_long$time[data_long$time == ""] <- NaN
+
+```
+
 ```{r can I pool all behavioral trials for analysis?}
 
 ### determine if the "good behavioral" trials differ based on "grade" during processing
