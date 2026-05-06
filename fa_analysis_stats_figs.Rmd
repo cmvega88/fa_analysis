@@ -158,9 +158,41 @@ data_long$time[data_long$time == ""] <- NaN
 ```      
 ```{r plot change in speed from pre to post}
 
+## visualize change in speed from pre to post
+  # put pre first
+  speed_data$time <- factor(speed_data$time,
+                          levels = c("pre", "post"))
+
+  # summarize pre and post speed values by individual
+  speed_plot <- speed_data %>%
+    group_by(individual, time) %>%
+    summarise(mean_speed = mean(value, na.rm = TRUE), .groups = "drop")
+
+  # plot mean speeds for an individual with slopes between pre and post    
+  ggplot(speed_plot, aes(x = time, y = mean_speed, group = individual)) +
+  geom_line(color = "grey60", alpha = 0.6) +
+  geom_point(size = 2) +
+  
+  stat_summary(aes(group = 1),
+               fun = mean,
+               geom = "line",
+               linewidth = 1.5,
+               color = "black") +
+  
+  stat_summary(aes(group = 1),
+               fun = mean,
+               geom = "point",
+               size = 3,
+               color = "black") +
+  
+  theme_classic()
+
 ## calculate the difference in speed (post_avg speed - pre_avg_speed)
   #subset speed data
   speed_data <- data_long[data_long$variable == "avg_speed",]
+
+  #keep only rows with metadata and speed values
+  speed_data <- speed_data[1:132, ]
 
   #split pre and post
   pre_speed <- speed_data[speed_data$time == "pre",]
@@ -173,8 +205,13 @@ data_long$time[data_long$time == ""] <- NaN
                         suffixes = c("_pre", "_post"))
   #calculate change in speed
   speed_change$delta_speed <- speed_change$value_post - speed_change$value_pre
-
   
+
+
+  ## notes for next time
+    # need to do distribution of all speed - only have pre now
+    # plot distribution of speed_change
+    # then go into models - clean up and organize
   
   
 ```
