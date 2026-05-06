@@ -38,8 +38,9 @@ data_long$time[data_long$time == ""] <- NaN
 
 ```
 
-```{r what is distribution of speed data}
-## first, determine if different data processing "grades" are different from each other or can be pools together for analysis
+```{r distribution of each variable's data}
+## first, determine distribution of all output variables
+  #1. speed
   ## isolate all pre avg speed values by grade
   pre_A <- data_long$value[
     data_long$variable == "avg_speed" &
@@ -94,10 +95,101 @@ data_long$time[data_long$time == ""] <- NaN
         col = rgb(0, 0, 1, 0.4),   # blue transparent
         add = TRUE)
       
+      # speed data seems to fit gamma distribution because they are positive
+      # (cannot be 0) and are skewed
+      
+  #2. area
+  ## subset area data
+    area_data <- data_long$value[
+    data_long$variable %in% c("area_fa", "area_ahead1", "area_ahead2",
+                             "area_ahead3","area_behind1","area_behind2",
+                             "area_behind3")]
+  
+  ## make histogram
+  hist(area_data,
+        prob = TRUE,
+        col = "lightblue",
+        main = "Polygon Area Distribution",
+        xlab = "Area")
+    
+    # area data seems to fit gamma distribution because they are positive
+    # (cannot be 0) and are skewed
+  
+  #3. body angle spread
+   ## subset area data
+    spread_data <- data_long$value[
+    data_long$variable %in% c("avg_body_angle_spread_fa",
+                              "avg_body_angle_spread_ahead1", 
+                              "avg_body_angle_spread_ahead2",
+                              "avg_body_angle_spread_ahead3",
+                              "avg_body_angle_spread_behind1",
+                              "avg_body_angle_spread_behind2",
+                              "avg_body_angle_spread_behind3")]
+  
+  ## make histogram
+  hist(spread_data,
+        prob = TRUE,
+        col = "lightblue",
+        main = "Body Angle Spread Distribution",
+        xlab = "Angle Spread")
+  
+  # angle spread data seems to fit gamma distribution because they are positive
+  # (cannot be 0) and are skewed
+  
+  #4. body angle
+   ## subset body angle data
+    body_angle_data <- data_long$value[
+    data_long$variable %in% c("avg_body_angle_fa",
+                              "avg_body_angle_ahead1", 
+                              "avg_body_angle_ahead2",
+                              "avg_body_angle_ahead3",
+                              "avg_body_angle_behind1",
+                              "avg_body_angle_behind2",
+                              "avg_body_angle_behind3")]
+  
+  ## make histogram
+  hist(body_angle_data,
+        prob = TRUE,
+        col = "lightblue",
+        main = "Body Angle Distribution",
+        xlab = "Angle (degrees)")
+  
+  # body angle data seems to have uniform distribution 
+      
+```      
+```{r plot change in speed from pre to post}
+
+## calculate the difference in speed (post_avg speed - pre_avg_speed)
+  #subset speed data
+  speed_data <- data_long[data_long$variable == "avg_speed",]
+
+  #split pre and post
+  pre_speed <- speed_data[speed_data$time == "pre",]
+  post_speed <- speed_data[speed_data$time == "post",]
+  
+  #use identifying variables to match up rows
+  speed_change <- merge(pre_speed, post_speed,
+                        by = c("date", "mocap_csv_name", "individual", "grade",
+                        "block_number","trial"),
+                        suffixes = c("_pre", "_post"))
+  #calculate change in speed
+  speed_change$delta_speed <- speed_change$value_post - speed_change$value_pre
+
+```
+ 
+``` {r run models}     
+## run a gamma general linear mixed model 
+  model <- glmer(value ~ variable * time * grade +
+                 (1 | individual),
+                 data = data_long,
+                 family = Gamma(link = "log"))
+  summary(model)
+
+## junk models 
 ## does average pre speed differ between grade A and B?
   # subset data for model
-  pre_speed_data <- data_long[data_long$variable == "avg_speed" & 
-                                data_long$time =="pre",]
+  #pre_speed_data <- data_long[data_long$variable == "avg_speed" & 
+                                #data_long$time =="pre",]
  
    # run general linear model on pre speed + deal with repeated measures
     #grade_model <- glm(value ~ grade, data = pre_data, family = gaussian())
@@ -109,8 +201,9 @@ data_long$time[data_long$time == ""] <- NaN
     # does the effect of pre v post change depending on speed?
     # predictors = variable, time, grade, speed (as continuous covariate)
     # outcome = value (all output variables)
-    model <- lmer(value ~ variable * time * grade + speed * time + (1 | individual),
-              data = data_long)
+    #model <- lmer(value ~ variable * time * grade + speed * time + 
+              #(1 | individual),
+              #data = data_long)
 
 ```
 
