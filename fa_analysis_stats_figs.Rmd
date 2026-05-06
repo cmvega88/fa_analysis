@@ -15,7 +15,6 @@ output: html_document
 ### load packages
   library(tidyr)
   library(lme4)
-  library(lemerTest)
 
 ### import csv containing metadata and output variables from python
   data <- read.csv("2026-05-06_fa_metadata_output_variables.csv")
@@ -175,6 +174,9 @@ data_long$time[data_long$time == ""] <- NaN
   #calculate change in speed
   speed_change$delta_speed <- speed_change$value_post - speed_change$value_pre
 
+  
+  
+  
 ```
  
 ``` {r run models}     
