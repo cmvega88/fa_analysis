@@ -17,6 +17,9 @@ output: html_document
   library(dplyr)
   library(ggplot2)
   library(lme4)
+  library(lmerTest)
+  library(emmeans)
+  library(effectsize)
 
 ### import csv containing metadata and output variables from python
   data <- read.csv("2026-05-06_fa_metadata_output_variables.csv")
@@ -237,22 +240,123 @@ data_long$time[data_long$time == ""] <- NaN
   
   theme_classic()
 
-  
-  ## notes for next time
-    # then go into models - clean up and organize
+  # on average, most individuals (n = 8/9) slow down after the perturbation
   
   
 ```
  
 ``` {r run models}     
-## run a gamma general linear mixed model 
-  model <- glmer(value ~ variable * time * grade +
-                 (1 | individual),
-                 data = data_long,
-                 family = Gamma(link = "log"))
-  summary(model)
 
-## junk models 
+## make categorical variables factors
+  data_long$variable <- factor(data_long$variable)
+  data_long$time <- factor(data_long$time)
+  data_long$grade <- factor(data_long$grade)
+  data_long$individual <- factor(data_long$individual)
+
+## does average pre speed differ between grade A and B?
+  # run general linear model on pre speed + deal with repeated measures
+    grade_model <- lmer(value ~ grade + (1 | individual), data = pre_speed)
+    summary(grade_model)
+      #lmer for gaussian mixed models
+      #glmer for non gaussian mixed models
+    
+    # there is a significant difference between grade A and grade B trials
+    # grade B significantly greater average speed than grade A 
+      # not necessarily surprising and could do a model with speed as continuous
+      # covariate to still pool? speed often differs between individuals when they
+      # self select speed for behavioral trials
+    
+    # calculate Cohen's d to evaluate effect size (0.2 = small, 0.5 = medium, 0.8 = large)
+      eff_size(emmeans(grade_model, ~ grade),
+         sigma = sigma(grade_model),
+         edf = df.residual(grade_model))
+      # medium to large effect size of grade
+    
+    # get predicted values from model
+    emm_grade <- emmeans(grade_model, ~ grade)
+    emm_grade_df <- as.data.frame(emm_grade)
+
+    # create plot
+    ggplot(emm_grade_df, aes(x = grade, y = emmean, group = 1)) +
+      geom_line(size = 1.2) +
+      geom_point(size = 3) +
+      geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
+      labs(title = "Effect of Grade", y = "Estimated Mean Value") +
+      theme_minimal()
+    
+## run a general linear mixed model on pre v post speed 
+    time_model <- lmer(value ~ time + (1 | individual), data = speed_data)
+    summary(time_model)
+    
+    # there is a significant decrease in speed after the perturbation
+    # which is what we expected to occur 
+    
+     # calculate Cohen's d to evaluate effect size (0.2 = small, 0.5 = medium, 0.8 = large)
+      eff_size(emmeans(time_model, ~ time),
+         sigma = sigma(time_model),
+         edf = df.residual(time_model))
+      #small to medium effect size of time
+    
+    # get predicted values from model
+    emm_time <- emmeans(time_model, ~ time)
+    emm_time_df <- as.data.frame(emm_time)
+
+    # create plot
+    ggplot(emm_time_df, aes(x = time, y = emmean, group = 1)) +
+      geom_line(size = 1.2) +
+      geom_point(size = 3) +
+      geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
+      labs(title = "Effect of Time", y = "Estimated Mean Value") +
+      theme_minimal()
+    
+## run a general linear mixed model on interaction between time and grade
+    time_grade_int_model <- lmer(value ~ time * grade + (1 | individual), data =
+                                   speed_data)
+    summary(time_grade_int_model)
+    
+    # no significant difference so the speed change from pre to post does not
+    # differ by grade (no effect of time); only significant is that grade b starts
+    # higher which we know from the above grade_model (significant main effect of
+    # grade)
+    
+      # calculate Cohen's d to evaluate effect size (0.2 = small, 0.5 = medium, 0.8 = large)
+      eff_size(emmeans(time_grade_int_model, ~ time * grade),
+         sigma = sigma(time_grade_int_model),
+         edf = df.residual(time_grade_int_model))
+        # grade a small to medium effect of decrease over time
+        # grade b medium to large effect of decrease over time
+        # not surprising given grade b has higher pre speed but time * grade interaction
+        # did not show time effect, only grade
+    
+    # plot
+      # make predicted values from model into data frame
+      emm_time_grade_df <- as.data.frame(emm_time_grade)
+    
+      # create plot
+      ggplot(emm_time_grade_df, aes(x = time, y = emmean, color = grade, group = grade)) +
+        geom_line(size = 1.2) +
+        geom_point(size = 3) +
+        geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
+        labs(x = "Time", y = "Estimated Mean Value",
+            title = "Time × Grade Interaction (Mixed Model)") +
+        theme_minimal()
+      
+## note to me:
+      # have template of analysis approach - repeat with other variables and include speed
+      # as a continuous covariate??
+      # want to create tables with model output eventually
+    
+## model sandbox 
+## run a gamma general linear mixed model 
+  #model <- glmer(value ~ variable * time * grade +
+                 #(1 | individual),
+                 #data = data_long,
+                 #family = Gamma(link = "log"))
+  #summary(model)
+  
+  # above model is OK for all variables except avg body angle and speed change which   # have uniform and normal distributions, respectively
+
+
 ## does average pre speed differ between grade A and B?
   # subset data for model
   #pre_speed_data <- data_long[data_long$variable == "avg_speed" & 
