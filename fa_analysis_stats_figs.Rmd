@@ -14,6 +14,8 @@ output: html_document
   
 ### load packages
   library(tidyr)
+  library(dplyr)
+  library(ggplot2)
   library(lme4)
 
 ### import csv containing metadata and output variables from python
@@ -94,7 +96,26 @@ data_long$time[data_long$time == ""] <- NaN
         col = rgb(0, 0, 1, 0.4),   # blue transparent
         add = TRUE)
       
-      # speed data seems to fit gamma distribution because they are positive
+      # pre speed data seems to fit gamma distribution because they are positive
+      # (cannot be 0) and are skewed
+      
+  ## subset all speed (pre + post) data
+    speed_all <- data_long$value[
+    data_long$variable == "avg_speed"]
+  
+  ### set up plot area
+      par(mfrow = c(1, 1))
+    
+    # plot avg speed 
+      hist(speed_all,
+        prob = TRUE,
+        col = "lightblue",
+        main = "Average Speed (Pre + Post)",
+        xlab = "Avg Speed")
+
+      lines(density(na.omit(speed_all)), col = "red", lwd = 2)
+    
+      # all speed seems to fit a gamma distribution because they are positive
       # (cannot be 0) and are skewed
       
   #2. area
@@ -158,6 +179,35 @@ data_long$time[data_long$time == ""] <- NaN
 ```      
 ```{r plot change in speed from pre to post}
 
+## calculate the difference in speed (post_avg speed - pre_avg_speed)
+  #subset speed data
+  speed_data <- data_long[data_long$variable == "avg_speed",]
+
+  #keep only rows with metadata and speed values
+  speed_data <- speed_data[1:132, ]
+
+  #split pre and post
+  pre_speed <- speed_data[speed_data$time == "pre",]
+  post_speed <- speed_data[speed_data$time == "post",]
+  
+  #use identifying variables to match up rows
+  speed_change <- merge(pre_speed, post_speed,
+                        by = c("date", "mocap_csv_name", "individual", "grade",
+                        "block_number","trial"),
+                        suffixes = c("_pre", "_post"))
+  #calculate change in speed
+  speed_change$delta_speed <- speed_change$value_post - speed_change$value_pre
+  
+## make histogram
+  hist(speed_change$delta_speed,
+        prob = TRUE,
+        col = "lightblue",
+        main = "Speed Change Distribution",
+        xlab = "Speed Change")
+  
+  # speed change seems to be either normal distribution or maybe a right skew
+  # (though cannot use gamma bc negative values OK)
+  
 ## visualize change in speed from pre to post
   # put pre first
   speed_data$time <- factor(speed_data$time,
@@ -187,30 +237,8 @@ data_long$time[data_long$time == ""] <- NaN
   
   theme_classic()
 
-## calculate the difference in speed (post_avg speed - pre_avg_speed)
-  #subset speed data
-  speed_data <- data_long[data_long$variable == "avg_speed",]
-
-  #keep only rows with metadata and speed values
-  speed_data <- speed_data[1:132, ]
-
-  #split pre and post
-  pre_speed <- speed_data[speed_data$time == "pre",]
-  post_speed <- speed_data[speed_data$time == "post",]
   
-  #use identifying variables to match up rows
-  speed_change <- merge(pre_speed, post_speed,
-                        by = c("date", "mocap_csv_name", "individual", "grade",
-                        "block_number","trial"),
-                        suffixes = c("_pre", "_post"))
-  #calculate change in speed
-  speed_change$delta_speed <- speed_change$value_post - speed_change$value_pre
-  
-
-
   ## notes for next time
-    # need to do distribution of all speed - only have pre now
-    # plot distribution of speed_change
     # then go into models - clean up and organize
   
   
