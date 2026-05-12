@@ -368,11 +368,22 @@ data_long$time[data_long$time == ""] <- NaN
     areas$individual <- as.character(areas$individual)
     pre_speed$individual <- as.character(pre_speed$individual)
 
-    areas <- areas %>%
-      left_join(pre_speed, by = "individual")
+    # add pre_speed as column to areas data frame
+    areas_formatted <- areas %>%
+      left_join(pre_speed, by = c("date", "mocap_csv_name", "block_number", "individual", "trial", "grade", "time"))
     
-    # set variable as a factor
-    polygon_area$variable <- as.factor(polygon_area$variable)
+    # clean up formatted data frame to consolidate columns and values so in format model expects
+    area_data <- areas_formatted %>%
+      mutate(area_value = value.x,
+             speed = value.y,
+             area_type = variable.x)
+    
+    #remove duplicate columns from previous step
+    area_data <- area_data %>%
+      select(-value.x, -value.y, -variable.x, -variable.y)
+    
+    #set variable as factor
+    area_data$area_type <- as.factor(area_data$area_type)
 
   #2. body spread
     body_spread <- data_long[
@@ -405,8 +416,9 @@ data_long$time[data_long$time == ""] <- NaN
         data_long$variable == "avg_speed"),]
 
 ## run a general linear mixed model 
-    time_speed_model <- lmer(value ~ time * variable + (1 | individual), data = polygon_area)
-
+    time_speed_model <- lmer(value ~ time * variable + (1 | individual), data = area_formatted)
+    time_speed_model <- lmer(area_value ~ time * area_type + speed + (1 | individual),
+                         data = area_data)
 # calculate Cohen's d to evaluate effect size (0.2 = small, 0.5 = medium, 0.8 = large)
     #eff_size(emmeans(model1, ~ time * grade),
          #sigma = sigma(model1),
