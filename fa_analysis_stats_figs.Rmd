@@ -368,15 +368,19 @@ data_long$time[data_long$time == ""] <- NaN
     areas$individual <- as.character(areas$individual)
     pre_speed$individual <- as.character(pre_speed$individual)
 
+    #remove time from pre speed
+    pre_speed <- pre_speed %>%
+    select(-time)
+    
     # add pre_speed as column to areas data frame
     areas_formatted <- areas %>%
-      left_join(pre_speed, by = c("date", "mocap_csv_name", "block_number", "individual", "trial", "grade", "time"))
+      left_join(pre_speed, by = c("date", "mocap_csv_name", "block_number", "individual", "trial", "grade"))
     
     # clean up formatted data frame to consolidate columns and values so in format model expects
     area_data <- areas_formatted %>%
       mutate(area_value = value.x,
              speed = value.y,
-             area_type = variable.x)
+             area_type = variable.x,)
     
     #remove duplicate columns from previous step
     area_data <- area_data %>%
