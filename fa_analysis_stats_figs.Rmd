@@ -19,6 +19,7 @@ output: html_document
   library(lme4)
   library(lmerTest)
   library(emmeans)
+  library(pbkrtest)
   library(effectsize)
 
 ### import csv containing metadata and output variables from python
@@ -330,7 +331,8 @@ data_long$time[data_long$time == ""] <- NaN
     
     # plot
       # make predicted values from model into data frame
-      emm_time_grade_df <- as.data.frame(time_grade_int_model)
+      emm_time_grade <- emmeans(time_grade_int_model, ~ time * grade)
+      emm_time_grade_df <- as.data.frame(emm_time_grade)
     
       # create plot
       ggplot(emm_time_grade_df, aes(x = time, y = emmean, color = grade, group = grade)) +
@@ -345,7 +347,7 @@ data_long$time[data_long$time == ""] <- NaN
 ```{r run nested models and use AIC to select best fit}
     # response variables- polygon area, body spread, body angle
     # fixed effects - grade(?)
-    # speed as continous covariate
+    # speed as continuous covariate
       
       #response variable ~ time + speed + (1 | individual)
       #above is basic model and run with all variations and compare AIC
@@ -353,6 +355,76 @@ data_long$time[data_long$time == ""] <- NaN
       # time is categorical predictor (pre v post)
       # speed is continuous predictor (use avg speed + try pre avg speed)
       # also test if effect of time depends on speed (response ~ time * speed)
+## subset data_long to get each response variables in appropriate structure to run models
+  #1. polygon area
+    areas <- data_long %>%filter(variable %in% c("area_fa",
+                                                    "area_ahead1",
+                                                    "area_ahead2",
+                                                    "area_ahead3",
+                                                    "area_behind1",
+                                                    "area_behind2",
+                                                    "area_behind3"))
+    # set individual in each data frame as characters so can join data frames
+    areas$individual <- as.character(areas$individual)
+    pre_speed$individual <- as.character(pre_speed$individual)
+
+    areas <- areas %>%
+      left_join(pre_speed, by = "individual")
+    
+    # set variable as a factor
+    polygon_area$variable <- as.factor(polygon_area$variable)
+
+  #2. body spread
+    body_spread <- data_long[
+      data_long$variable %in% c(
+        "avg_body_angle_spread_fa",
+        "avg_body_angle_spread_ahead1",
+        "avg_body_angle_spread_ahead2",
+        "avg_body_angle_spread_ahead3",
+        "avg_body_angle_spread_behind1",
+        "avg_body_angle_spread_behind2",
+        "avg_body_angle_spread_behind3"
+      ) |
+      (
+        data_long$time == "pre" &
+        data_long$variable == "avg_speed"),]
+    
+  #3. body angle
+    body_angle <- data_long[
+      data_long$variable %in% c(
+        "avg_body_angle_fa",
+        "avg_body_angle_ahead1",
+        "avg_body_angle_ahead2",
+        "avg_body_angle_ahead3",
+        "avg_body_angle_behind1",
+        "avg_body_angle_behind2",
+        "avg_body_angle_behind3"
+      ) |
+      (
+        data_long$time == "pre" &
+        data_long$variable == "avg_speed"),]
+
+## run a general linear mixed model 
+    time_speed_model <- lmer(value ~ time * variable + (1 | individual), data = polygon_area)
+
+# calculate Cohen's d to evaluate effect size (0.2 = small, 0.5 = medium, 0.8 = large)
+    #eff_size(emmeans(model1, ~ time * grade),
+         #sigma = sigma(model1),
+         #edf = df.residual(model1))
+    # plot
+      # make predicted values from model into data frame
+      #emm_time_grade <- emmeans(time_grade_int_model, ~ time * grade)
+      #emm_time_grade_df <- as.data.frame(emm_time_grade)
+    
+      # create plot
+      #ggplot(emm_time_grade_df, aes(x = time, y = emmean, color = grade, group = grade)) +
+        #geom_line(size = 1.2) +
+        #geom_point(size = 3) +
+        #geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
+        #labs(x = "Time", y = "Estimated Mean Value",
+            #title = "Time × Grade Interaction (Mixed Model)") +
+        #theme_minimal()
+```
 
 ```
 
