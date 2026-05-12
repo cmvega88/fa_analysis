@@ -245,7 +245,7 @@ data_long$time[data_long$time == ""] <- NaN
   
 ```
  
-``` {r run models}     
+``` {r run models on speed}     
 
 ## make categorical variables factors
   data_long$variable <- factor(data_long$variable)
@@ -330,7 +330,7 @@ data_long$time[data_long$time == ""] <- NaN
     
     # plot
       # make predicted values from model into data frame
-      emm_time_grade_df <- as.data.frame(emm_time_grade)
+      emm_time_grade_df <- as.data.frame(time_grade_int_model)
     
       # create plot
       ggplot(emm_time_grade_df, aes(x = time, y = emmean, color = grade, group = grade)) +
@@ -340,10 +340,27 @@ data_long$time[data_long$time == ""] <- NaN
         labs(x = "Time", y = "Estimated Mean Value",
             title = "Time × Grade Interaction (Mixed Model)") +
         theme_minimal()
+```
       
+```{r run nested models and use AIC to select best fit}
+    # response variables- polygon area, body spread, body angle
+    # fixed effects - grade(?)
+    # speed as continous covariate
+      
+      #response variable ~ time + speed + (1 | individual)
+      #above is basic model and run with all variations and compare AIC
+      #to select model
+      # time is categorical predictor (pre v post)
+      # speed is continuous predictor (use avg speed + try pre avg speed)
+      # also test if effect of time depends on speed (response ~ time * speed)
+
+```
+
+```{r junk code and notes to me}
 ## note to me:
       # have template of analysis approach - repeat with other variables and include speed
-      # as a continuous covariate??
+      # run lmer models and then use AIC() or summary(model) to get model comparison metric
+      # as a continuous covariate?? - yes
       # want to create tables with model output eventually
     
 ## model sandbox 
