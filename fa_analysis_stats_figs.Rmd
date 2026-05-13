@@ -344,7 +344,7 @@ data_long$time[data_long$time == ""] <- NaN
         theme_minimal()
 ```
       
-```{r run nested models and use AIC to select best fit}
+```{r subset data for polygon area and run models}
     # response variables- polygon area, body spread, body angle
     # fixed effects - grade(?)
     # speed as continuous covariate
@@ -389,60 +389,94 @@ data_long$time[data_long$time == ""] <- NaN
     #set variable as factor
     area_data$area_type <- as.factor(area_data$area_type)
 
-  #2. body spread
-    body_spread <- data_long[
-      data_long$variable %in% c(
-        "avg_body_angle_spread_fa",
-        "avg_body_angle_spread_ahead1",
-        "avg_body_angle_spread_ahead2",
-        "avg_body_angle_spread_ahead3",
-        "avg_body_angle_spread_behind1",
-        "avg_body_angle_spread_behind2",
-        "avg_body_angle_spread_behind3"
-      ) |
-      (
-        data_long$time == "pre" &
-        data_long$variable == "avg_speed"),]
-    
-  #3. body angle
-    body_angle <- data_long[
-      data_long$variable %in% c(
-        "avg_body_angle_fa",
-        "avg_body_angle_ahead1",
-        "avg_body_angle_ahead2",
-        "avg_body_angle_ahead3",
-        "avg_body_angle_behind1",
-        "avg_body_angle_behind2",
-        "avg_body_angle_behind3"
-      ) |
-      (
-        data_long$time == "pre" &
-        data_long$variable == "avg_speed"),]
+ 
 
-## run a general linear mixed model 
-    time_speed_model <- lmer(value ~ time * variable + (1 | individual), data = area_formatted)
+## run a general linear mixed model with time and area_type and interaction as fixed effects
+    #speed as covariate
+    #individual as random effect
+    
+    #first, set reference levels for model this is what all other levels will be compared to in model
+    area_data$time <- relevel(area_data$time, ref = "pre")
+    area_data$area_type <- relevel(area_data$area_type, ref = "area_fa")
+    
+    ## run model 
     time_speed_model <- lmer(area_value ~ time * area_type + speed + (1 | individual),
                          data = area_data)
+    summary(time_speed_model)
+    
+    ## polygon area values in area_fa are significantly higher at post compared with pre time
+    ## smaller increases for area_ahead
+    ## behind regions show decreases in polygon area over time (esp behind2 and behind3)
+    ## speed covariate is significant - faster speed associated with large area values independent of region        and time; speed is strong predictor of area_value
+    ##increases from pre to post
+      #strongest in FA
+      #also present in ahead2 and ahead3 - probaby due to snake moving forward?
+    ##decreased from pre to post
+      #strongest in behind2
+      #moderate in behind3
+      #slight decrease in behind1
+    ##minimal change in ahead1
+    
 # calculate Cohen's d to evaluate effect size (0.2 = small, 0.5 = medium, 0.8 = large)
-    #eff_size(emmeans(model1, ~ time * grade),
-         #sigma = sigma(model1),
-         #edf = df.residual(model1))
+    eff_size(emmeans(time_speed_model, ~ time | area_type),
+         sigma = sigma(time_speed_model),
+         edf = df.residual(time_speed_model))
+    ##effect sizes for pre-post changes vary across spatial chunks
+      # large effects (d =0.94, 0.96) in fa and behind2
+      # medium effects (d=0.52, 0.47, 0.42) in behind3, ahead2, and ahead3
+      # uncertain/small effects in ahead1, behind1 (CI includes 0 unlike all above)
+    
+      # think we have evidence of increase in total body slide (polygon area) because
+        #1. significant increase in polygon area at post for FA chunk
+        #2. effect size for this is large 
+        
+    
     # plot
       # make predicted values from model into data frame
-      #emm_time_grade <- emmeans(time_grade_int_model, ~ time * grade)
-      #emm_time_grade_df <- as.data.frame(emm_time_grade)
+      emm_time_speed <- emmeans(time_speed_model, ~ time * area_type + speed)
+      emm_time_speed_df <- as.data.frame(emm_time_speed)
     
-      # create plot
-      #ggplot(emm_time_grade_df, aes(x = time, y = emmean, color = grade, group = grade)) +
-        #geom_line(size = 1.2) +
-        #geom_point(size = 3) +
-        #geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
-        #labs(x = "Time", y = "Estimated Mean Value",
-            #title = "Time × Grade Interaction (Mixed Model)") +
-        #theme_minimal()
+      # create plot with area_type
+      ggplot(emm_time_speed_df, aes(x = time, y = emmean, color = area_type, group = area_type)) +
+        geom_line(size = 1.2) +
+        geom_point(size = 3) +
+        geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
+        labs(x = "Time", y = "Estimated Mean Value",
+            title = "Time × Area_Type + Speed (Mixed Model)") +
+        theme_minimal()
+      
+      # create plot with speed
+      # get predicted values from model over grid of speed values
+      emm_time_speed_speedplot <- emmeans(
+      time_speed_model,
+      ~ speed | time * area_type,
+      at = list(speed = seq(
+        min(area_data$speed, na.rm = TRUE),
+        max(area_data$speed, na.rm = TRUE),
+        length.out = 50)))
+      
+      emm_time_speed_speedplot_df <- as.data.frame(emm_time_speed_speedplot)
+      
+      # plot using speed (continuous) as x
+      ggplot(emm_time_speed_speedplot_df,
+        aes(x = speed, y = emmean, color = time)) +
+        geom_line(size = 1.2) +
+        geom_ribbon(
+          aes(ymin = lower.CL, ymax = upper.CL, fill = time),
+          alpha = 0.2,
+          color = NA
+        ) +
+        facet_wrap(~ area_type) +
+        labs(
+          x = "Speed",
+          y = "Estimated Mean Area Value",
+          title = "Predicted Area Values Across Speed",
+          color = "Time",
+          fill = "Time") +
+        theme_minimal()
 ```
 
-```
+
 
 ```{r junk code and notes to me}
 ## note to me:
@@ -450,6 +484,38 @@ data_long$time[data_long$time == ""] <- NaN
       # run lmer models and then use AIC() or summary(model) to get model comparison metric
       # as a continuous covariate?? - yes
       # want to create tables with model output eventually
+
+#time_speed_model <- lmer(value ~ time * variable + (1 | individual), data = area_formatted)
+
+ #2. body spread
+    #body_spread <- data_long[
+      #data_long$variable %in% c(
+        #"avg_body_angle_spread_fa",
+        #"avg_body_angle_spread_ahead1",
+        #"avg_body_angle_spread_ahead2",
+        #"avg_body_angle_spread_ahead3",
+        #"avg_body_angle_spread_behind1",
+        #"avg_body_angle_spread_behind2",
+        #"avg_body_angle_spread_behind3"
+      #) |
+      #(
+        #data_long$time == "pre" &
+        #data_long$variable == "avg_speed"),]
+    
+  #3. body angle
+    #body_angle <- data_long[
+      #data_long$variable %in% c(
+        #"avg_body_angle_fa",
+        #"avg_body_angle_ahead1",
+        #"avg_body_angle_ahead2",
+        #"avg_body_angle_ahead3",
+        #"avg_body_angle_behind1",
+        #"avg_body_angle_behind2",
+        #"avg_body_angle_behind3"
+      #) |
+      #(
+        #data_long$time == "pre" &
+        #data_long$variable == "avg_speed"),]
     
 ## model sandbox 
 ## run a gamma general linear mixed model 
