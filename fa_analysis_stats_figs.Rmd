@@ -342,6 +342,26 @@ data_long$time[data_long$time == ""] <- NaN
         labs(x = "Time", y = "Estimated Mean Value",
             title = "Time × Grade Interaction (Mixed Model)") +
         theme_minimal()
+      
+      
+# # table code from circ stats - need to modify for here
+  
+  # Create a table to hold the corresponding linear model output 
+  #table_time_grade <- as.data.frame(emmeans_time_grade_df$contrasts, infer = TRUE)
+  
+  # Rename column names in table
+  #colnames(table_time_grade) <- c("Comparison", "Estimate", "SE", "DF", "lower CI", "upper CI", "T_Value", "P_Value")
+  
+  # Create descriptive statistics table from the original data (not from the model)
+  # These data correspond to the linear box plots in the paper
+  #table_time_grade_linear_descriptives <- speed_data %>%
+    #group_by(time*grade) %>%
+    #summarise(
+      #Mean = mean(R_tongue_protraction_min_CyclePercent, na.rm = TRUE),
+      #SD = sd(R_tongue_protraction_min_CyclePercent, na.rm = TRUE),
+      #Median = median(R_tongue_protraction_min_CyclePercent, na.rm = TRUE),
+      #Min = min(R_tongue_protraction_min_CyclePercent, na.rm = TRUE),
+      #Max = max(R_tongue_protraction_min_CyclePercent, na.rm = TRUE))
 ```
       
 ```{r subset data for polygon area and run models}
