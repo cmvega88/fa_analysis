@@ -342,8 +342,12 @@ data_long$time[data_long$time == ""] <- NaN
         labs(x = "Time", y = "Estimated Mean Value",
             title = "Time × Grade Interaction (Mixed Model)") +
         theme_minimal()
-      
-      
+
+## check that distribution for models fits actual distribution of data for all current code      
+            
+## get AIC values
+  # AIC(model_name)
+  # create table for AIC values
 # # table code from circ stats - need to modify for here
   
   # Create a table to hold the corresponding linear model output 
