@@ -516,7 +516,7 @@ data_long$time[data_long$time == ""] <- NaN
       # speed is continuous predictor (use pre avg speed)
       # also test if effect of time depends on speed (response ~ time * speed)
 ## subset data_long to get each response variables in appropriate structure to run models
-  #2. body angle spread
+  #3. body angle spread
     spreads <- data_long %>%filter(variable %in% c("avg_body_angle_spread_fa",
                                                     "avg_body_angle_spread_ahead1",
                                                     "avg_body_angle_spread_ahead2",
@@ -543,10 +543,13 @@ data_long$time[data_long$time == ""] <- NaN
     spread_data <- spread_data %>%
       select(-value.x, -value.y, -variable.x, -variable.y)
     
+    #clean up spread_type column for model
+      # Overwrite the original column by removing the prefix
+      spread_data$spread_type <- gsub("avg_body_angle_spread_", "", spread_data$spread_type)
+
     #set variable as factor
     spread_data$spread_type <- as.factor(spread_data$spread_type)
-
- 
+    
 
 ## run a general linear mixed model with time and area_type and interaction as fixed effects
     #speed as covariate
@@ -554,64 +557,80 @@ data_long$time[data_long$time == ""] <- NaN
     
     #first, set reference levels for model this is what all other levels will be compared to in model
     spread_data$time <- relevel(spread_data$time, ref = "pre")
-    spread_data$spread_type <- relevel(spread_data$spread_type, ref = "avg_body_angle_spread_fa")
+    spread_data$spread_type <- relevel(spread_data$spread_type, ref = "fa")
     
     ## run model 
-    spread_time_speed_model <- lmer(spread_value ~ time * spread_type + speed + (1 | individual),
+    spread_speed_model <- lmer(spread_value ~ spread_type + speed + (1 | individual),
                          data = spread_data)
-    summary(spread_time_speed_model)
+    summary(spread_speed_model)
     
   
     
 # calculate Cohen's d to evaluate effect size (0.2 = small, 0.5 = medium, 0.8 = large)
-    eff_size(emmeans(spread_time_speed_model, ~ time | area_type),
-         sigma = sigma(spread_time_speed_model),
-         edf = df.residual(spread_time_speed_model))
+    eff_size(emmeans(spread_speed_model, ~ speed | spread_type),
+         sigma = sigma(spread_speed_model),
+         edf = df.residual(spread_speed_model))
   
         
     
     # plot
       # make predicted values from model into data frame
-      emm_spread_time_speed <- emmeans(spread_time_speed_model, ~ time * area_type + speed)
-      emm_spread_time_speed_df <- as.data.frame(emm_spread_time_speed)
+      emm_spread_speed <- emmeans(spread_speed_model, ~ spread_type + speed)
+      emm_spread_speed_df <- as.data.frame(emm_spread_speed)
+      
+      
+      emm_spread_speed_speedplot <- emmeans(spread_speed_model, ~ speed |spread_type,
+                                    at = list(speed = seq(min(spread_data$speed, na.rm = TRUE),
+                                    max(spread_data$speed, na.rm = TRUE),
+                                    length.out = 50)))
+
+      emm_spread_speed_speedplot_df <- as.data.frame(emm_spread_speed_speedplot)
+      
+      # define order of spread_types so matches spatial arrangement on board
+      order <- c("behind3", "behind2", "behind1", "fa", "ahead1", "ahead2", "ahead3")
     
-      # create plot with area_type
-      ggplot(emm_spread_time_speed_df, aes(x = time, y = emmean, color = area_type, group = area_type)) +
+      # re-order the factor levels in plot data frame
+      emm_spread_speed_df$spread_type <- factor(emm_spread_speed_df$spread_type, levels = order)
+      
+      emm_spread_speed_speedplot_df$spread_type <- factor(
+                                                  emm_spread_speed_speedplot_df$spread_type, 
+                                                  levels = order)
+      
+      # create plot with spread_type
+      ggplot(emm_spread_speed_df, aes(x = spread_type, y = emmean, color = spread_type, group = 1)) +
         geom_line(size = 1.2) +
         geom_point(size = 3) +
         geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
-        labs(x = "Time", y = "Estimated Mean Spread Value",
-            title = "Time × Area_Type + Speed (Mixed Model)") +
+        labs(x = "Spread_Type", y = "Estimated Mean Spread Value",
+            title = "Spread_Type Effect adjusted for Speed") +
         theme_minimal()
       
       # create plot with speed
       # get predicted values from model over grid of speed values
-      emm_spread_time_speed_speedplot <- emmeans(
-      spread_time_speed_model,
-      ~ speed | time * area_type,
+      emm_spread_speed_speedplot <- emmeans(
+      spread_speed_model,
+      ~ speed | spread_type,
       at = list(speed = seq(
         min(spread_data$speed, na.rm = TRUE),
         max(spread_data$speed, na.rm = TRUE),
         length.out = 50)))
       
-      emm_spread_time_speed_speedplot_df <- as.data.frame(emm_spread_time_speed_speedplot)
-      
       # plot using speed (continuous) as x
-      ggplot(emm_spread_time_speed_speedplot_df,
-        aes(x = speed, y = emmean, color = time)) +
+      ggplot(emm_spread_speed_speedplot_df,
+        aes(x = speed, y = emmean, color = spread_type)) +
         geom_line(size = 1.2) +
         geom_ribbon(
-          aes(ymin = lower.CL, ymax = upper.CL, fill = time),
+          aes(ymin = lower.CL, ymax = upper.CL, fill = spread_type),
           alpha = 0.2,
           color = NA
         ) +
-        facet_wrap(~ area_type) +
+        facet_wrap(~ spread_type) +
         labs(
           x = "Speed",
           y = "Estimated Mean Spread Value",
           title = "Predicted Spread Values Across Speed",
-          color = "Time",
-          fill = "Time") +
+          color = "Spread_type",
+          fill = "Spread_type") +
         theme_minimal()
       
       
@@ -620,46 +639,50 @@ data_long$time[data_long$time == ""] <- NaN
 
 ```
 
-```{ r subset data for body angle and run models}
-  # response variables- polygon area, body spread, body angle
+```{r subset data for body angle and run models}
+    # response variables- polygon area, body spread, body angle
+    # fixed effects - grade(?)
     # speed as continuous covariate
       
       #response variable ~ time + speed + (1 | individual)
       #above is basic model and run with all variations and compare AIC
       #to select model
       # time is categorical predictor (pre v post)
-      # speed is continuous predictor (use pre avg speed)
+      # speed is continuous predictor (use avg speed + try pre avg speed)
       # also test if effect of time depends on speed (response ~ time * speed)
 ## subset data_long to get each response variables in appropriate structure to run models
-  #3. body angle spread
-    body_angle <- data_long %>%filter(variable %in% c("avg_body_angle_fa",
+  #3. body angle
+    angle <- data_long %>%filter(variable %in% c("avg_body_angle_fa",
                                                     "avg_body_angle_ahead1",
                                                     "avg_body_angle_ahead2",
                                                     "avg_body_angle_ahead3",
                                                     "avg_body_angle_behind1",
                                                     "avg_body_angle_behind2",
-                                                    "avg_body_angle__behind3"))
+                                                    "avg_body_angle_behind3"))
     # set individual in each data frame as characters so can join data frames
-    body_angle$individual <- as.character(body_angle$individual)
+    angle$individual <- as.character(angle$individual)
     pre_speed$individual <- as.character(pre_speed$individual)
 
+    #remove time from pre speed
+    #pre_speed <- pre_speed %>%
+    #select(-time)
     
     # add pre_speed as column to areas data frame
-    spreads_formatted <- spreads %>%
+    angle_formatted <- angle %>%
       left_join(pre_speed, by = c("date", "mocap_csv_name", "block_number", "individual", "trial", "grade"))
     
     # clean up formatted data frame to consolidate columns and values so in format model expects
-    spread_data <- spreads_formatted %>%
-      mutate(spread_value = value.x,
+    angle_data <- angle_formatted %>%
+      mutate(angle_value = value.x,
              speed = value.y,
-             spread_type = variable.x,)
+             angle_type = variable.x,)
     
     #remove duplicate columns from previous step
-    spread_data <- spread_data %>%
+    angle_data <- angle_data %>%
       select(-value.x, -value.y, -variable.x, -variable.y)
     
     #set variable as factor
-    spread_data$spread_type <- as.factor(spread_data$spread_type)
+    angle_data$angle_type <- as.factor(angle_data$angle_type)
 
  
 
@@ -668,51 +691,47 @@ data_long$time[data_long$time == ""] <- NaN
     #individual as random effect
     
     #first, set reference levels for model this is what all other levels will be compared to in model
-    spread_data$time <- relevel(spread_data$time, ref = "pre")
-    spread_data$spread_type <- relevel(spread_data$spread_type, ref = "avg_body_angle_spread_fa")
+    angle_data$time <- relevel(angle_data$time, ref = "pre")
+    angle_data$angle_type <- relevel(angle_data$angle_type, ref = "angle_fa")
     
     ## run model 
-    spread_time_speed_model <- lmer(spread_value ~ time * spread_type + speed + (1 | individual),
-                         data = spread_data)
-    summary(spread_time_speed_model)
-    
-  
+    time_speed_model <- lmer(angle_value ~ time * angle_type + speed + (1 | individual),
+                         data = angle_data)
+    summary(time_speed_model)
     
 # calculate Cohen's d to evaluate effect size (0.2 = small, 0.5 = medium, 0.8 = large)
-    eff_size(emmeans(spread_time_speed_model, ~ time | area_type),
-         sigma = sigma(spread_time_speed_model),
-         edf = df.residual(spread_time_speed_model))
-  
-        
+    eff_size(emmeans(time_speed_model, ~ time | angle_type),
+         sigma = sigma(time_speed_model),
+         edf = df.residual(time_speed_model))
     
     # plot
       # make predicted values from model into data frame
-      emm_spread_time_speed <- emmeans(spread_time_speed_model, ~ time * area_type + speed)
-      emm_spread_time_speed_df <- as.data.frame(emm_spread_time_speed)
+      emm_time_speed <- emmeans(time_speed_model, ~ time * angle_type + speed)
+      emm_time_speed_df <- as.data.frame(emm_time_speed)
     
-      # create plot with area_type
-      ggplot(emm_spread_time_speed_df, aes(x = time, y = emmean, color = area_type, group = area_type)) +
+      # create plot with angle_type
+      ggplot(emm_time_speed_df, aes(x = time, y = emmean, color = angle_type, group = angle_type)) +
         geom_line(size = 1.2) +
         geom_point(size = 3) +
         geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
-        labs(x = "Time", y = "Estimated Mean Spread Value",
-            title = "Time × Area_Type + Speed (Mixed Model)") +
+        labs(x = "Time", y = "Estimated Mean Value",
+            title = "Time × Angle_Type + Speed (Mixed Model)") +
         theme_minimal()
       
       # create plot with speed
       # get predicted values from model over grid of speed values
-      emm_spread_time_speed_speedplot <- emmeans(
-      spread_time_speed_model,
-      ~ speed | time * area_type,
+      emm_time_speed_speedplot <- emmeans(
+      time_speed_model,
+      ~ speed | time * angle_type,
       at = list(speed = seq(
-        min(spread_data$speed, na.rm = TRUE),
-        max(spread_data$speed, na.rm = TRUE),
+        min(angle_data$speed, na.rm = TRUE),
+        max(angle_data$speed, na.rm = TRUE),
         length.out = 50)))
       
-      emm_spread_time_speed_speedplot_df <- as.data.frame(emm_spread_time_speed_speedplot)
+      emm_time_speed_speedplot_df <- as.data.frame(emm_time_speed_speedplot)
       
       # plot using speed (continuous) as x
-      ggplot(emm_spread_time_speed_speedplot_df,
+      ggplot(emm_time_speed_speedplot_df,
         aes(x = speed, y = emmean, color = time)) +
         geom_line(size = 1.2) +
         geom_ribbon(
@@ -720,18 +739,17 @@ data_long$time[data_long$time == ""] <- NaN
           alpha = 0.2,
           color = NA
         ) +
-        facet_wrap(~ area_type) +
+        facet_wrap(~ angle_type) +
         labs(
           x = "Speed",
-          y = "Estimated Mean Spread Value",
-          title = "Predicted Spread Values Across Speed",
+          y = "Estimated Mean Angle Value",
+          title = "Predicted Angle Values Across Speed",
           color = "Time",
           fill = "Time") +
         theme_minimal()
       
       
 ## need to create table that organizes the model output and effect sizes and AIC?
-
 ```
 
 ```{r junk code and notes to me}
