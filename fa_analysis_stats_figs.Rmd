@@ -681,6 +681,10 @@ data_long$time[data_long$time == ""] <- NaN
     angle_data <- angle_data %>%
       select(-value.x, -value.y, -variable.x, -variable.y)
     
+    #clean up angle_type column for model
+      # Overwrite the original column by removing the prefix
+      angle_data$angle_type <- gsub("avg_body_angle_", "", angle_data$angle_type)
+
     #set variable as factor
     angle_data$angle_type <- as.factor(angle_data$angle_type)
 
@@ -692,7 +696,7 @@ data_long$time[data_long$time == ""] <- NaN
     
     #first, set reference levels for model this is what all other levels will be compared to in model
     angle_data$time <- relevel(angle_data$time, ref = "pre")
-    angle_data$angle_type <- relevel(angle_data$angle_type, ref = "angle_fa")
+    angle_data$angle_type <- relevel(angle_data$angle_type, ref = "fa")
     
     ## run model 
     time_speed_model <- lmer(angle_value ~ time * angle_type + speed + (1 | individual),
